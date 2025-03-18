@@ -30,3 +30,4 @@ migrations/
 
 # Ignore Jupyter Notebook checkpoints (if applicable)
 .ipynb_checkpoints/
+"Credentials.json" 

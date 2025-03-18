@@ -1,5 +1,5 @@
-from dotenv import load_dotenv
 from flask import Flask, render_template, request, jsonify, redirect
+from dotenv import load_dotenv
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 from flask_cors import CORS
@@ -11,51 +11,60 @@ from datetime import datetime, timedelta
 import time
 import driveAPI
 import os
-import io
-import tempfile
-from googleapiclient.discovery import build
 from werkzeug.utils import secure_filename
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseUpload
-from google.auth.transport.requests import Request
-from google.oauth2 import service_account
-
-client = MongoClient(str(os.getenv("MONGO_URI")))
-# print(os.getenv("MONGO_URI"))
-
-# db = client.cse_gsp_21_25
-db = client["cse_gsp_21_25"]
-
-load_dotenv()
+# import io
+# import tempfile
+# from googleapiclient.discovery import build
+# from google.oauth2.credentials import Credentials
+# from google_auth_oauthlib.flow import InstalledAppFlow
+# from googleapiclient.discovery import build
+# from googleapiclient.http import MediaIoBaseUpload
+# from google.auth.transport.requests import Request
+# from google.oauth2 import service_account
 
 app = Flask(__name__)
 CORS(app)
 
 
-# Google Mail Service
-# app = Flask(__name__)
-# app.config['MAIL_SERVER'] = 'smtp.gmail.com'  # Replace with your email server
-# app.config['MAIL_PORT'] = 465
-# app.config['MAIL_USE_TLS'] = False
-# app.config['MAIL_USE_SSL'] = True
-# app.config['MAIL_USERNAME'] = 'guideselection.cse@sathyabama.ac.in'  # Replace with your email address
-# app.config['MAIL_PASSWORD'] = 'ucik ubno mwzi onwe'  # Replace with your email password
+load_dotenv()
 
-# Elastic Mail Service
-app.config["MAIL_SERVER"] = "smtp.elasticemail.com"  # Replace with your email server
-app.config["MAIL_PORT"] = 2525
-# app.config['MAIL_USE_TLS'] = False
-# app.config['MAIL_USE_SSL'] = True
-app.config["MAIL_USERNAME"] = (
-    "guideselectionportal@cse-soc.com"  # Replace with your email address
-)
-app.config["MAIL_PASSWORD"] = str(
-    os.getenv("MAIL_PASSWORD")
-)  # Replace with your email password
+
+# Google Mail Service
+app = Flask(__name__)
+app.config["MAIL_SERVER"] = "smtp.gmail.com"
+app.config["MAIL_PORT"] = 465
+app.config["MAIL_USE_TLS"] = False
+app.config["MAIL_USE_SSL"] = True
+# print(os.getenv("TEMP_MAIL"))
+# print(os.getenv("TEMP_MAIL_PASSWORD"))
+app.config["MAIL_USERNAME"] = str(os.getenv("TEMP_MAIL"))
+app.config["MAIL_PASSWORD"] = str(os.getenv("TEMP_MAIL_PASSWORD"))
 
 mail = Mail(app)
+
+# Elastic Mail Service
+# app.config["MAIL_SERVER"] = "smtp.elasticemail.com"  # Replace with your email server
+# app.config["MAIL_PORT"] = 2525
+# # app.config['MAIL_USE_TLS'] = False
+# # app.config['MAIL_USE_SSL'] = True
+# app.config["MAIL_USERNAME"] = (
+#     "guideselectionportal@cse-soc.com"  # Replace with your email address
+# )
+# app.config["MAIL_PASSWORD"] = str(
+#     os.getenv("MAIL_PASSWORD")
+# )  # Replace with your email password
+
+
+# mail = Mail(app)
+
+
+client = MongoClient(str(os.getenv("MONGO_URI")))
+# print(os.getenv("MONGO_URI"))
+
+
+db = client["cse_gsp_22_26"]
+
+CORS(app)
 
 # @app.route('/')
 # def index():
@@ -168,7 +177,9 @@ def checkAuthentication(mailId):
     # print(token)
     try:
         decoded_token = jwt.decode(token, secret_key, algorithms=["HS256"])
+        print(f"{decoded_token=}")
         email = decoded_token["email"]
+        print(f"{email=}")
         if str(mailId) == str(email):
             print("Authenticated")
             return jsonify({"message": "Authenticated"})
@@ -195,7 +206,7 @@ def check_data(mailid, password1):
     # Get the update data from the request
     data = request.json
     password = data.get("passcode")
-    if str(mailid)[:6] == "CSE-25":
+    if str(mailid)[:6] == "CSE-26":
         filter = {"teamId": mailid}
         collection = (
             db.users
@@ -237,6 +248,7 @@ def check_data(mailid, password1):
     # Update the data in the collection
     collection = db.users  # Replace <collection_name> with the name of your collection
     result = collection.find_one(filter)
+    # print(result)
     if result is None:
         return jsonify({"is_account_available": "false"})
 
@@ -244,13 +256,13 @@ def check_data(mailid, password1):
 
     token = generate_token(mailid)
 
-    tokenforfirsttime = generate_token(mailid)
-
+    tokenForFirstTime = generate_token(mailid)
+    # print(result)
     if result["firstTime"]:
         # return jsonify({"is_account_available":"true","_id":str(id), "token":token, "first_login":"true"})
-
+        # print(result["firstTime"])
         otp = random.randint(100000, 999999)
-
+        # print(result)
         if result:
             try:
                 msg = Message(
@@ -288,7 +300,7 @@ def check_data(mailid, password1):
                         "_id": str(id),
                         "OTP": otp,
                         "token": token,
-                        "token_for_first_time": tokenforfirsttime,
+                        "token_for_first_time": tokenForFirstTime,
                         "name": result["Full Name"],
                         "regNo": result["regNo"],
                         "phoneNo": result["Mobile Number"],
@@ -303,7 +315,7 @@ def check_data(mailid, password1):
                         "is_account_available": "true",
                         "_id": str(id),
                         "Is_Email_sent": "false",
-                        "first_time": "true",
+                        "first_time": result["firstTime"],
                     }
                 )
         else:
@@ -384,7 +396,7 @@ def get_Guide_List():
     for document in data:
         result.append({})
         result[i]["id"] = i + 1
-        result[i]["SL"] = document["SL"]["NO"]
+        # result[i]["SL"] = document["SL"]["No"]
         result[i]["NAME"] = document["NAME OF THE FACULTY"]
         result[i]["VACANCIES"] = document["TOTAL BATCHES"]
         result[i]["DESIGNATION"] = document["DESIGNATION"]
@@ -502,7 +514,7 @@ def create_collection_single(mailId):
             <li>Project Description - {collection_data["projectDesc"]}</li>
             <li>Guide Name - {collection_data["selectedGuide"]}</li>
             </ul><br/>
-            
+
             <ul>
             <b>Login Credentials:</b><br/>
             <li>Project Id - {teamiId}</li>
@@ -638,7 +650,7 @@ def create_collection_duo(mailId1, mailId2):
             <li>Project Description - {collection_data["projectDesc"]}</li>
             <li>Guide Name - {collection_data["selectedGuide"]}</li>
             </ul><br/>
-            
+
             <ul>
             <b>Login Credentials:</b><br/>
             <li>Project Id - {teamiId}</li>
@@ -2253,14 +2265,18 @@ def fetchmaxteam(mailid):
     return jsonify({"maxTeams": findmaxteam["MAX TEAMS"]})
 
 
-@app.route("/adminLogin/check", methods=["POST"])
+@app.route("/admin_login/check", methods=["POST"])
 def checkAdminLogin():
     data = request.json
-    print(data)
-
-    if str(data["email"]) == os.getenv("ADMIN_MAILID"):
-        token = generate_token(data["email"])
-        if str(data["password"]) == os.getenv("ADMIN_PASSWORD"):
+    mailId = data.get("mailId")
+    password = data.get("passcode")
+    AdminCredentials = db["AdminCredentials"]
+    filter = {"mailId": mailId}
+    result = AdminCredentials.find_one(filter)
+    print(result)
+    if result:
+        token = generate_token(mailId)
+        if str(password) == result["password"]:
             return jsonify(
                 {
                     "is_account_available": "true",
